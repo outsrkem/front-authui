@@ -1,9 +1,12 @@
 const { defineConfig } = require('@vue/cli-service')
 module.exports = defineConfig({
+    configureWebpack: {
+        devtool: false,
+    },
     transpileDependencies: true,
     publicPath: '/authui/',
     pages: {
-        login: 'src/login.js',
+        login: 'src/main.js',
     },
     devServer: {
         proxy: {
