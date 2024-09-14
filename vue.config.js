@@ -18,6 +18,7 @@ module.exports = defineConfig({
               '^/uias': '/uias'
             }
           }
-        }
+        },
+        webSocketServer: false,
     },
 })

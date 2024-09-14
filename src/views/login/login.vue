@@ -1,6 +1,6 @@
 <template>
     <div class="bg-image"></div>
-    <el-button link type="primary" @click="onSwitchFrom()">切换</el-button>
+    <!-- <el-button link type="primary" @click="onSwitchFrom()">切换</el-button> -->
     <div class="from-container">
         <div class="from-common login-container" v-if="loginPage">
             <div class="login-head">
@@ -25,22 +25,26 @@
                 </div>
                 <el-form  style="max-width: 600px" :model="twoFactorForm"  label-width="auto" label-position="left">
                     <el-form-item label="验证方式">
-                        <el-segmented v-model="twoFactorForm.device" :options="twoFactor.device"/>
+                        <el-select v-model="twoFactorForm.device" placeholder="暂没有绑定验证方式">
+                            <el-option v-for="(item, index) in twoFactor.device" :key="index" :label="item.title" :value="item.name" />
+                        </el-select>
                     </el-form-item>
-                    <el-form-item label="绑定邮箱">
-                        <span>9***.qq.com</span>
-                    </el-form-item>
-                    <el-form-item label="验证码">
-                        <el-input v-model="twoFactorForm.captcha">
-                            <template #append>
-                                <el-button>获取验证码</el-button>
+                    <el-form-item label="验证码" style="margin-bottom: 0px;">
+                        <el-input v-model="twoFactorForm.captcha" placeholder="请输入验证码" @input="handleInputChange">
+                            <template #append v-if="twoFactorForm.device==='email' || twoFactorForm.device==='mobile'">
+                                <el-button :disabled="buttonDisabled.GetCaptcha" @click="onSendCaptcha()">{{ buttonTitle.GetCaptcha }}</el-button>
                             </template>
                         </el-input>
                     </el-form-item>
+                    <el-form-item label="">
+                        <div style="display: flex;justify-content: center;width: 100%;">
+                            <el-text :type="messages.type">{{ messages.text }}</el-text>
+                        </div>
+                    </el-form-item>
                 </el-form>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <el-button type="primary" style="width: 48%;" @click="onSwitchAccount()">切换账号</el-button>
-                    <el-button type="primary" style="width: 48%;">继续登录</el-button>
+                    <el-button style="width: 48%;" @click="onSwitchAccount()">切换账号</el-button>
+                    <el-button type="primary" style="width: 48%;" :disabled="buttonDisabled.ContinueLogin" @click="onContinueLogin()">继续登录</el-button>
                 </div>
             </div>
         </div>
@@ -51,7 +55,10 @@
 import { setTitle } from '@/utils/authui.js';
 import {
     login,
-    logout
+    logout,
+    GetBasicInfo,
+    GetCaptcha,
+    Verification
 } from '@/api/index.js'
 export default {
     name: 'LoginIndex',
@@ -62,7 +69,7 @@ export default {
             loginLoading: false, // 登录的 loading 状态
             user: { // 登录名,密码
                 account: '',
-                password: '' 
+                password: ''
             },
             // 表单验证规则配置
             formLoginRules: {
@@ -72,23 +79,31 @@ export default {
             loginPage: true,
             isTwoFactorPage: false, // 二次验证
             twoFactor: {
-                device: [
-                    { label: '邮箱验证', value: 'email' },
-                    { label: '手机验证', value: 'mobile' },
-                    { label: 'VMFA验证', value: 'vmfa' },
-                ],
+                device: []
             },
             twoFactorForm: {
-                device: '',
+                device: null,
                 captcha: '',
-                
             },
+            buttonDisabled: {
+                GetCaptcha: false,
+                ContinueLogin: true,
+            },
+            buttonTitle: {
+                GetCaptcha: '点击获取验证码'
+            },
+            messages: {
+                type: '',
+                text: ''
+            },
+            countdownTimer: null, // 全局变量来存储定时器ID
         }
     },
     computed: {},
     watch: {},
     created() {
         setTitle('用户登录');
+        this.loadGetBasicInfo();
     },
     mounted () {
     },
@@ -101,6 +116,7 @@ export default {
                 if (!valid) {
                     return
                 }
+                this.$cookies.remove('session');
                 this.Login()// 验证通过，请求登录
             })
         },
@@ -121,24 +137,88 @@ export default {
             this.loginLoading = true
             const data = {"uias": this.user}
             login(data).then((res) => {
-                // if (res.meta_info.res_msg.payload.two_factor) { // 要二次验证
-                //     this.isTwoFactorPage = true;
-                //     console.log(this.isTwoFactorPage)
-                // } else {
-                //     this.toRedirectPath()  // 不进行二次验证
-                // }
-                console.log(res)
-                this.toRedirectPath()
+                if (res.payload.two_factor) { // 要二次验证
+                    this.onSwitchFrom()
+                    const device = res.payload.device
+                    device.map(item => {
+                        if (item.name === 'email') {
+                            item['title'] = `邮箱验证（${item.value}）`
+                        }
+                        if (item.name === 'mobile') {
+                            item['title'] = `手机验证（${item.value}）`
+                        }
+                        if (item.name === 'vmfa') {
+                            item['title'] = `VMFA验证`
+                        }
+                        if (this.twoFactorForm.device === null) {
+                            this.twoFactorForm.device = item.name
+                        }
+                    })
+                    this.twoFactor.device = device
+                } else {
+                    this.toRedirectPath()  // 不进行二次验证
+                }
             }).catch(err => {
                 this.loginLoading = false
-                this.$notify({ duration: 2000, title: '登录失败', message: err, type: 'error' })
+                let msg = err
+                this.$notify({ duration: 2000, title: '登录失败', message: msg, type: 'error' })
             })
         },
+        loadGetCaptcha: function () {
+            // 获取验证码
+            const params = {variety: this.twoFactorForm.device}
+            GetCaptcha(params).then((res) => {
+                this.messages = {
+                    type: 'success',
+                    text: `验证码发送成功。验证码编号：${res.payload.captcha.serial}`
+                }
+            }).catch(() => {
+                this.messages = {
+                    type: 'danger',
+                    text: '验证码发送失败，请稍后重试。'
+                }
+            })
+        },
+        loadVerification: function () {
+            // 验证后继续登录
+            const paths = { schema: this.twoFactorForm.device }
+            const data = { captcha: this.twoFactorForm.captcha }
+            Verification(paths, data).then(() => {
+                this.messages = {
+                    type: 'success',
+                    text: '验证成功，正在登录。'
+                }
+                this.toRedirectPath()
+            }).catch(() => {
+                this.twoFactorForm.captcha = ''
+                this.messages.type = 'danger'
+                this.messages.text = '验证码已失效，请点击重新获取。'
+            })
+        },
+        loadGetBasicInfo: function () {
+            GetBasicInfo().then(() => {
+                // 如果用户已经登录过直接跳转到控制台。
+                this.toRedirectPath()
+            }).catch(() => { })
+        },
+        onContinueLogin() {
+            // 继续登录
+            this.loadVerification()
+        },
+        onSendCaptcha() {
+            this.buttonDisabled.GetCaptcha = true
+            this.startCountdown(60) // 倒计时功能，用于更新获取验证码按钮的提示信息
+            this.loadGetCaptcha()
+        },
         onSwitchAccount() {
-            this.$cookies.remove('session');
-            logout().then(() => { }).catch(() => { })
+            logout().then(() => {
+                this.$cookies.remove('session');
+            }).catch(() => {
+                this.$cookies.remove('session');
+            })
             this.loginPage = true
             this.isTwoFactorPage = false
+            this.loginLoading = false
         },
         onSwitchFrom() {
             if (this.loginPage) {
@@ -148,15 +228,34 @@ export default {
                 this.loginPage = true
                 this.isTwoFactorPage = false
             }
-           
+        },
+        handleInputChange() {
+            // 验证码输入框在 Input 值改变时触发
+            // 输入验证码，启用继续登录按钮，删除验证码，禁用继续登录按钮
+            let value = this.twoFactorForm.captcha
+            if (value != '') {
+                this.buttonDisabled.ContinueLogin = false
+            } else {
+                this.buttonDisabled.ContinueLogin = true
+            }
+        },
+        startCountdown(seconds=60) {
+            if (seconds <= 0) {
+                clearInterval(this.countdownTimer); // 清除定时器
+                this.buttonDisabled.GetCaptcha = false; // 启用按钮
+                this.buttonTitle.GetCaptcha = '重新获取验证码'; // 恢复按钮文本
+                return;
+            }
+            this.buttonTitle.GetCaptcha = `${seconds}秒后重新获取`;
+            this.countdownTimer = setTimeout(() => {
+                this.startCountdown(seconds - 1);
+            }, 1000);
         }
     }
 }
 </script>
 
-
 <style>
-
     body, html{
         height: 100%;
         margin: 0;
@@ -180,7 +279,6 @@ export default {
         right: 0;
         bottom: 0;
         left: 0;
-
         z-index: -1;
     }
     .from-container {
@@ -220,8 +318,8 @@ export default {
     }
     .two-factor-container{
         width: 400px;
-        padding-left: 100px;
-        padding-right: 100px;
+        /* padding-left: 100px; */
+        /* padding-right: 100px; */
         h3 {
             text-align: center;
         }
