@@ -11,7 +11,7 @@
                     <el-input v-model="user.account" clearable placeholder="请输入登录名" />
                 </el-form-item>
                 <el-form-item prop="password">
-                    <el-input v-model="user.password" clearable show-password placeholder="请输入密码" />
+                    <el-input v-model="user.password" clearable show-password placeholder="请输入密码" @keyup.enter="onEntrtLogin" />
                 </el-form-item>
                 <el-form-item>
                     <el-button style="width: 100%" type="primary" :loading="loginLoading" @click="onLogin">登录</el-button>
@@ -104,6 +104,12 @@ export default {
     },
     mounted() {},
     methods: {
+        onEntrtLogin(e) {
+            if (e != null && e.which != 13) {
+                return false;
+            }
+            this.onLogin();
+        },
         onLogin() {
             // 表单验证， validate 方法是异步的,获取表单数据（根据接口要求绑定数据）
             // this.loginPage = false
