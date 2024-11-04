@@ -17,8 +17,8 @@ import ajax from '../api/ajax'
 export const login = (data) => ajax('/v1/user/signin', 'POST', null, data)
 export const logout = () => ajax('/v1/user/logout', 'POST')
 // 获取双因子验证码
-export const GetCaptcha = (params) => ajax('/v1/uias/captcha/login', 'GET', params)
-export const Verification = (paths, data) => ajax(`/v1/uias/security/verification/${paths.schema}/two_factor`, 'POST', null, data)
+export const GetCaptcha = (params) => ajax('/v1/uias/login/captcha', 'GET', params)
+export const Verification = (paths, data) => ajax(`/v1/uias/security/verification/${paths.schema}/twofactor`, 'POST', null, data)
 
 // 获取用户信息 /v1/uias/user/basicInfo
 export const GetBasicInfo = () => ajax('/v1/uias/user/basicInfo', 'GET')
