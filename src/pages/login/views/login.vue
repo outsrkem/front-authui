@@ -4,19 +4,34 @@
     <div class="from-container">
         <div class="from-common login-container" v-if="loginPage">
             <div class="login-head">
-                <h3>帐号登录</h3>
+                <h3 style="margin-bottom: 0px; margin-top: 15px">用户登录</h3>
+            </div>
+            <!-- 登录错误的提示消息 -->
+            <div style="height: 25px; display: flex; align-items: center">
+                <el-text type="danger">{{ loginErrorMessage }}</el-text>
             </div>
             <el-form ref="login-form" :model="user" :rules="formLoginRules">
                 <el-form-item prop="account">
-                    <el-input v-model="user.account" clearable placeholder="请输入登录名" />
+                    <el-input v-model="user.account" clearable placeholder="请输入账号">
+                        <template #prefix>
+                            <el-icon class="el-input__icon"><User /></el-icon>
+                        </template>
+                    </el-input>
                 </el-form-item>
                 <el-form-item prop="password">
-                    <el-input v-model="user.password" clearable show-password placeholder="请输入密码" @keyup.enter="onEntrtLogin" />
+                    <el-input v-model="user.password" clearable show-password placeholder="请输入密码" @keyup.enter="onEntrtLogin">
+                        <template #prefix>
+                            <el-icon class="el-input__icon"><Lock /></el-icon>
+                        </template>
+                    </el-input>
                 </el-form-item>
                 <el-form-item>
                     <el-button style="width: 100%" type="primary" :loading="loginLoading" @click="onLogin">登录</el-button>
                 </el-form-item>
             </el-form>
+            <div style="float: right; padding-right: 20px">
+                <el-link href="/authui/forgetpwd.html" target="_blank">忘记密码</el-link>
+            </div>
         </div>
         <div class="from-common two-factor-container" v-if="isTwoFactorPage">
             <div>
@@ -44,9 +59,7 @@
                 </el-form>
                 <div style="display: flex; justify-content: space-between; align-items: center">
                     <el-button style="width: 48%" @click="onSwitchAccount()">切换账号</el-button>
-                    <el-button type="primary" style="width: 48%" :disabled="buttonDisabled.ContinueLogin" @click="onContinueLogin()"
-                        >继续登录</el-button
-                    >
+                    <el-button type="primary" style="width: 48%" :disabled="buttonDisabled.ContinueLogin" @click="onContinueLogin()">继续登录</el-button>
                 </div>
             </div>
         </div>
@@ -54,11 +67,12 @@
 </template>
 
 <script>
+// import { ElButton, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElLink } from "element-plus";
 import { setTitle } from "@/utils/authui.js";
 import { login, logout, GetBasicInfo, GetCaptcha, Verification } from "@/api/index.js";
 export default {
     name: "LoginIndex",
-    components: {},
+    // components: { ElInput, ElForm, ElFormItem, ElButton, ElSelect, ElOption, ElLink },
     props: {},
     data() {
         return {
@@ -93,6 +107,7 @@ export default {
                 type: "",
                 text: "",
             },
+            loginErrorMessage: "",
             countdownTimer: null, // 全局变量来存储定时器ID
         };
     },
@@ -171,6 +186,7 @@ export default {
                 .catch((err) => {
                     this.loginLoading = false;
                     let msg = err.metadata.message;
+                    this.loginErrorMessage = err.metadata.message;
                     this.$notify({ duration: 2000, title: "登录失败", message: msg, type: "error" });
                 });
         },

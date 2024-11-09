@@ -2,7 +2,7 @@
  * 与后台交互模块 （依赖已封装的ajax函数）
  * 包含n个接口请求函数的模块，函数的返回值是promise对象
  */
-import ajax from '../api/ajax'
+import ajax from "../api/ajax";
 /**
  * ajax 有如下4个参数
  * @param {*} url 请求路径，默认为空
@@ -14,11 +14,15 @@ import ajax from '../api/ajax'
 /**
  * 用户登录
  */
-export const login = (data) => ajax('/v1/user/signin', 'POST', null, data)
-export const logout = () => ajax('/v1/user/logout', 'POST')
+export const login = (data) => ajax("/v1/user/signin", "POST", null, data);
+export const logout = () => ajax("/v1/user/logout", "POST");
 // 获取双因子验证码
-export const GetCaptcha = (params) => ajax('/v1/uias/login/captcha', 'GET', params)
-export const Verification = (paths, data) => ajax(`/v1/uias/security/verification/${paths.schema}/twofactor`, 'POST', null, data)
+export const GetCaptcha = (params) => ajax("/v1/uias/login/captcha", "GET", params);
+export const Verification = (paths, data) => ajax(`/v1/uias/security/verification/${paths.schema}/twofactor`, "POST", null, data);
 
 // 获取用户信息 /v1/uias/user/basicInfo
-export const GetBasicInfo = () => ajax('/v1/uias/user/basicInfo', 'GET')
+export const GetBasicInfo = () => ajax("/v1/uias/user/basicInfo", "GET");
+
+// 找回密码
+export const Gcode = (data) => ajax("/v1/uias/retpwd/gcode", "POST", null, data);
+export const SetPwd = (data) => ajax("/v1/uias/retpwd/spwd", "POST", null, data);
