@@ -1,38 +1,31 @@
 <template>
-    <div class="bg-image"></div>
-    <!-- <el-button link type="primary" @click="onSwitchFrom()">切换</el-button> -->
     <div class="from-container">
         <div class="from-common login-container" v-if="loginPage">
             <div class="login-head">
-                <h3 style="margin-bottom: 0px; margin-top: 15px">用户登录</h3>
+                <el-image style="width: 80px; height: 80px" src="/support/loginlogo.png" fit="cover" />
+                <h3 style="margin-bottom: 0px; margin-top: 15px; letter-spacing: 1px; word-spacing: 2px">登录数据平台</h3>
             </div>
-            <!-- 登录错误的提示消息 -->
-            <div style="height: 25px; display: flex; align-items: center">
-                <el-text type="danger">{{ loginErrorMessage }}</el-text>
-            </div>
-            <el-form ref="login-form" :model="user" :rules="formLoginRules">
-                <el-form-item prop="account">
-                    <el-input v-model="user.account" clearable placeholder="请输入账号">
-                        <template #prefix>
-                            <el-icon class="el-input__icon"><User /></el-icon>
-                        </template>
-                    </el-input>
+
+            <el-form ref="login-form" :model="user" label-position="top" :rules="formLoginRules" hide-required-asterisk>
+                <el-form-item prop="account" label="账号">
+                    <input class="large" id="account" type="text" v-model="user.account" />
                 </el-form-item>
-                <el-form-item prop="password">
-                    <el-input v-model="user.password" clearable show-password placeholder="请输入密码" @keyup.enter="onEntrtLogin">
-                        <template #prefix>
-                            <el-icon class="el-input__icon"><Lock /></el-icon>
-                        </template>
-                    </el-input>
+                <el-form-item prop="password" label="密码">
+                    <input class="large" type="password" id="password" v-model="user.password" @keyup.enter="onEntrtLogin" />
                 </el-form-item>
                 <el-form-item>
-                    <el-button style="width: 100%" type="primary" :loading="loginLoading" @click="onLogin">登录</el-button>
+                    <el-button size="large" style="width: 100%" type="primary" :loading="loginLoading" @click="onLogin">登录</el-button>
                 </el-form-item>
             </el-form>
             <div style="float: right; padding-right: 20px">
                 <el-link href="/authui/forgetpwd.html" target="_blank">忘记密码</el-link>
             </div>
+            <!-- 登录错误的提示消息 -->
+            <div style="height: 25px; display: flex; align-items: center">
+                <el-text type="danger">{{ loginErrorMessage }}</el-text>
+            </div>
         </div>
+
         <div class="from-common two-factor-container" v-if="isTwoFactorPage">
             <div>
                 <div class="two-factor-head">
@@ -64,15 +57,31 @@
             </div>
         </div>
     </div>
+
+    <!-- 页脚区域 -->
+    <div class="footer">
+        <div class="footer-content">
+            <ul class="footer-list">
+                <li v-if="isFooterEmptyObj(footer.company)">
+                    <span>{{ copyright }}</span>
+                </li>
+                <li v-if="isFooterEmptyObj(footer.beian)">
+                    <a :href="footer.beian.href" target="_blank">{{ footer.beian.title }}</a>
+                </li>
+                <li v-if="isFooterEmptyObj(footer.privacy)">
+                    <a :href="footer.privacy.href" target="_blank">{{ footer.privacy.title }}</a>
+                </li>
+            </ul>
+        </div>
+    </div>
 </template>
 
 <script>
-// import { ElButton, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElLink } from "element-plus";
 import { setTitle } from "@/utils/authui.js";
-import { login, logout, GetBasicInfo, GetCaptcha, Verification } from "@/api/index.js";
+import { login, logout, GetBasicInfo, GetCaptcha, Verification, GetBasicFooter } from "@/api/index.js";
 export default {
     name: "LoginIndex",
-    // components: { ElInput, ElForm, ElFormItem, ElButton, ElSelect, ElOption, ElLink },
+    components: {},
     props: {},
     data() {
         return {
@@ -84,7 +93,7 @@ export default {
             },
             // 表单验证规则配置
             formLoginRules: {
-                account: [{ required: true, type: "string", message: "请输入用户名", trigger: ["blur", "change"] }],
+                account: [{ required: true, type: "string", message: "请输入登录账号", trigger: ["blur", "change"] }],
                 password: [{ required: true, type: "string", message: "请输入密码", trigger: ["blur", "change"] }],
             },
             loginPage: true,
@@ -109,16 +118,38 @@ export default {
             },
             loginErrorMessage: "",
             countdownTimer: null, // 全局变量来存储定时器ID
+            //页脚内容
+            footer: {
+                company: "",
+                beian: {},
+                privacy: {},
+            },
         };
     },
-    computed: {},
+    computed: {
+        copyright() {
+            const currentYear = new Date().getFullYear();
+            return `© ${currentYear} ${this.footer.company} 版权所有`;
+        },
+    },
     watch: {},
     created() {
         setTitle("用户登录");
         this.loadGetBasicInfo();
+        this.loadGetBasicFooter();
     },
     mounted() {},
     methods: {
+        isFooterEmptyObj(obj) {
+            // 非空返回true
+            if (typeof obj === "string") {
+                return obj.trim().length > 0;
+            }
+            if (typeof obj === "object" && obj !== null) {
+                return obj && Object.keys(obj).length > 0 && "title" in obj && "href" in obj && obj.title !== "";
+            }
+            return false;
+        },
         onEntrtLogin(e) {
             if (e != null && e.which != 13) {
                 return false;
@@ -154,8 +185,8 @@ export default {
             this.loginLoading = true;
             const data = {
                 uias: {
-                    account: this.user.account,
-                    password: this.user.password.trim(), // 去掉输入框前后的空格
+                    account: this.user.account.trim(), // 去掉输入框前后的空格
+                    password: this.user.password.trim(),
                 },
             };
             login(data)
@@ -233,6 +264,11 @@ export default {
                 })
                 .catch(() => {});
         },
+        loadGetBasicFooter: function () {
+            GetBasicFooter().then((res) => {
+                this.footer = res.payload;
+            });
+        },
         onContinueLogin() {
             // 继续登录
             this.loadVerification();
@@ -290,59 +326,29 @@ export default {
 </script>
 
 <style>
-body,
-html {
-    height: 100%;
-    margin: 0;
-    font-family: Arial, sans-serif;
+.from-container {
+    padding-top: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
 }
 
-h2 {
-    text-align: center;
-}
-.bg-image {
-    background: url("./login_bg.png");
-    background-position: center;
-    background-size: cover;
-    background-repeat: no-repeat;
-    filter: blur(8px);
-    -webkit-filter: blur(8px);
-    position: fixed;
-    /* height: 100%; */
-    /* width: 100%; */
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: -1;
-}
-.from-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    /* padding: 15%; */
-    height: 80vh;
-}
 .from-common {
     padding: 20px;
-    background-color: #ffffff;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
+
 .login-head {
-    display: flex;
-    justify-content: center;
+    text-align: center;
     h3 {
-        color: #3d3f41;
+        color: var(--text-color-primary);
     }
 }
+
 .login-container {
-    width: 300px;
-    position: relative;
-    background-color: rgba(255, 255, 255, 0.5);
+    width: 24rem;
+    background-color: rgba(255, 255, 255, 1);
 }
+
 .two-factor-head {
     display: flex;
     justify-content: center;
@@ -350,12 +356,54 @@ h2 {
         color: #3d3f41;
     }
 }
+
 .two-factor-container {
     width: 400px;
-    /* padding-left: 100px; */
-    /* padding-right: 100px; */
     h3 {
         text-align: center;
+    }
+}
+
+/* 页脚 */
+.footer {
+    width: 100%;
+    margin-top: 65px;
+    background-color: #f6f8fa;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+}
+
+.footer-content {
+    text-align: center;
+    color: var(--footer-color-text);
+    font-size: 0.75rem;
+    padding: 16px 0px;
+}
+
+.footer-content a {
+    color: var(--footer-color-text);
+    text-decoration: none;
+}
+
+.footer-content a:hover {
+    color: var(--footer-color-link);
+    text-decoration-line: underline;
+    text-underline-offset: 4px;
+}
+
+.footer-list {
+    display: flex;
+    justify-content: center;
+    list-style: none;
+    gap: 16px;
+}
+
+@media (max-width: 768px) {
+    .footer-list {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
     }
 }
 </style>

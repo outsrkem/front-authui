@@ -10,12 +10,11 @@ import ajax from "../api/ajax";
  * @param {*} params 请求参数，默认为空对象
  * @param {*} data 请求参数，默认为空对象
  */
-/** *********************************用户相关**************************************************** */
-/**
- * 用户登录
- */
+
+// 用户登录
 export const login = (data) => ajax("/v1/user/signin", "POST", null, data);
 export const logout = () => ajax("/v1/user/logout", "POST");
+
 // 获取双因子验证码
 export const GetCaptcha = (params) => ajax("/v1/uias/login/captcha", "GET", params);
 export const Verification = (paths, data) => ajax(`/v1/uias/security/verification/${paths.schema}/twofactor`, "POST", null, data);
@@ -26,3 +25,6 @@ export const GetBasicInfo = () => ajax("/v1/uias/user/basicInfo", "GET");
 // 找回密码
 export const Gcode = (data) => ajax("/v1/uias/retpwd/gcode", "POST", null, data);
 export const SetPwd = (data) => ajax("/v1/uias/retpwd/spwd", "POST", null, data);
+
+// 页脚信息
+export const GetBasicFooter = () => ajax("/v1/basic/footer", "GET");

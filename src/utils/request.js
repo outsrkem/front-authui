@@ -1,55 +1,59 @@
 /**
  * 基于 axios 封装的请求模块
  */
-import axios from 'axios'
+import axios from "axios";
 // import router from '@/router'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from "element-plus";
 
 const request = axios.create({
-  baseURL: '/api/uias' // 请求的基础路径
-})
+    baseURL: "/api/uias", // 请求的基础路径
+});
 
 request.interceptors.request.use(
-  /**
-   * 请求拦截器
-   */
-  function (config) {
     /**
-     * 添加请求头
+     * 请求拦截器
      */
-    if (config.method === 'get') {
-      config.data = true
-    }
-    config.headers = {
-      'Content-Type':'application/json;charset=utf-8'
-    }
-    return config // 当这里 return config 之后请求在会真正的发出去
-  },
-  function (error) { // 请求失败，会经过这里
-    return Promise.reject(error)
-  }
-)
+    function (config) {
+        /**
+         * 添加请求头
+         */
+        if (config.method === "get") {
+            config.data = true;
+        }
+        config.headers = {
+            "Content-Type": "application/json;charset=utf-8",
+        };
+        return config; // 当这里 return config 之后请求在会真正的发出去
+    },
+    function (error) {
+        // 请求失败，会经过这里
+        return Promise.reject(error);
+    },
+);
 
 // 响应拦截器
-request.interceptors.response.use(function (response) {
-    return response
-}, function (error) {
-    const { status } = error.response
-    if (status === 401) {
-        return Promise.reject(error.response.data)
-    } else if (status === 403) {
-        // token 无权限访问
-        ElMessage({
-            type: 'warning',
-            message: '没有操作权限'
-        })
-    } else if (status === 400) {
-        return Promise.reject(error.response.data)
-    } else if (status >= 500) {
-        return Promise.reject(error.response.data)
-    }
-    return Promise.reject(error)
-})
+request.interceptors.response.use(
+    function (response) {
+        return response;
+    },
+    function (error) {
+        const { status } = error.response;
+        if (status === 401) {
+            return Promise.reject(error.response.data);
+        } else if (status === 403) {
+            // token 无权限访问
+            ElMessage({
+                type: "warning",
+                message: "没有操作权限",
+            });
+        } else if (status === 400) {
+            return Promise.reject(error.response.data);
+        } else if (status >= 500) {
+            return Promise.reject(error.response.data);
+        }
+        return Promise.reject(error);
+    },
+);
 
 // 导出请求方法
-export default request
+export default request;

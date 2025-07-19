@@ -3,6 +3,7 @@ import App from "./app.vue";
 import ElementPlus from "element-plus";
 import vueCookies from "vue-cookies";
 import "element-plus/dist/index.css";
+import "../../styles/index.less";
 
 const app = createApp(App);
 
