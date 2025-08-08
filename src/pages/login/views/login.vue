@@ -5,7 +5,6 @@
                 <el-image style="width: 80px; height: 80px" src="/support/loginlogo.png" fit="cover" />
                 <h3 style="margin-bottom: 0px; margin-top: 15px; letter-spacing: 1px; word-spacing: 2px">登录数据平台</h3>
             </div>
-
             <el-form ref="login-form" :model="user" label-position="top" :rules="formLoginRules" hide-required-asterisk>
                 <el-form-item prop="account" label="账号">
                     <input class="large" id="account" type="text" v-model="user.account" />
@@ -13,16 +12,16 @@
                 <el-form-item prop="password" label="密码">
                     <input class="large" type="password" id="password" v-model="user.password" @keyup.enter="onEntrtLogin" />
                 </el-form-item>
-                <el-form-item>
+                <el-form-item style="margin-bottom: 0px">
                     <el-button size="large" style="width: 100%" type="primary" :loading="loginLoading" @click="onLogin">登录</el-button>
                 </el-form-item>
             </el-form>
-            <div style="float: right; padding-right: 20px">
-                <el-link href="/authui/forgetpwd.html" target="_blank">忘记密码</el-link>
-            </div>
             <!-- 登录错误的提示消息 -->
             <div style="height: 25px; display: flex; align-items: center">
                 <el-text type="danger">{{ loginErrorMessage }}</el-text>
+            </div>
+            <div style="float: right; padding-right: 20px">
+                <el-link href="/authui/forgetpwd.html" target="_blank">忘记密码</el-link>
             </div>
         </div>
 
@@ -78,6 +77,9 @@
 
 <script>
 import { setTitle } from "@/utils/authui.js";
+import { formatTime, getTimeDiff } from "../../../utils/date.js";
+import { ECODE } from "@/utils/eode";
+import { ElMessage } from "element-plus";
 import { login, logout, GetBasicInfo, GetCaptcha, Verification, GetBasicFooter } from "@/api/index.js";
 export default {
     name: "LoginIndex",
@@ -215,10 +217,45 @@ export default {
                     }
                 })
                 .catch((err) => {
+                    console.log(err);
                     this.loginLoading = false;
-                    let msg = err.metadata.message;
                     this.loginErrorMessage = err.metadata.message;
-                    this.$notify({ duration: 2000, title: "登录失败", message: msg, type: "error" });
+                    let ecode = err.metadata.ecode;
+                    let err_count = err.payload.err_count;
+                    let max_count = err.payload.max_count;
+                    let lock_duration = err.payload.lock_duration;
+                    let last_time = err.payload.last_time;
+                    if (ecode === ECODE.EcodeUserAuthenticationFailed) {
+                        if (err_count < 2) {
+                            this.loginErrorMessage = `账号或密码错误`;
+                            return;
+                        }
+                        if (max_count > err_count && err_count >= 2) {
+                            this.loginErrorMessage = `账号或密码错误，再输错${max_count - err_count}次该账号将被锁定${lock_duration / 60}分钟。`;
+                        } else if (max_count === err_count) {
+                            this.loginErrorMessage = `账号已锁定，请${lock_duration / 60}分钟后重试。`;
+                        } else {
+                            this.loginErrorMessage = `账号或密码错误，请${lock_duration / 60}分钟后重试。`;
+                            return;
+                        }
+                    }
+
+                    if (ecode === ECODE.EcodeLoginAttemptsExceeded) {
+                        // 账号锁定
+
+                        let time = formatTime(last_time + lock_duration * 1000, "YYYY年MM月DD日HH时mm分ss秒");
+                        let tdiff = getTimeDiff(last_time + lock_duration * 1000);
+                        let msg = `账号已锁定，请于${time}后重试。`;
+                        ElMessage({
+                            message: msg,
+                            type: "error",
+                            duration: 3000,
+                            plain: true,
+                            grouping: true,
+                            showClose: true,
+                        });
+                        this.loginErrorMessage = `剩余等候时间：${tdiff}`;
+                    }
                 });
         },
         loadGetCaptcha: function () {

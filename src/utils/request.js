@@ -41,17 +41,10 @@ request.interceptors.response.use(
         if (status === 401) {
             return Promise.reject(error.response.data);
         } else if (status === 403) {
-            // token 无权限访问
-            ElMessage({
-                type: "warning",
-                message: "没有操作权限",
-            });
-        } else if (status === 400) {
-            return Promise.reject(error.response.data);
-        } else if (status >= 500) {
-            return Promise.reject(error.response.data);
+            ElMessage({ type: "warning", message: "没有操作权限", grouping: true, plain: true });
+            return;
         }
-        return Promise.reject(error);
+        return Promise.reject(error.response.data);
     },
 );
 
