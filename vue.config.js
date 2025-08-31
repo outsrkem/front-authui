@@ -12,7 +12,7 @@ module.exports = defineConfig({
     devServer: {
         proxy: {
             "/": {
-                target: "https://p1sch.outsrkem.top:20287",
+                target: "https://turtle.outsrkem.top:35860",
                 changeOrigin: true,
                 secure: false,
                 pathRewrite: {

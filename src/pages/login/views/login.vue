@@ -3,24 +3,29 @@
         <div class="from-common login-container" v-if="loginPage">
             <div class="login-head">
                 <el-image style="width: 80px; height: 80px" src="/support/loginlogo.png" fit="cover" />
-                <h3 style="margin-bottom: 0px; margin-top: 15px; letter-spacing: 1px; word-spacing: 2px">登录数据平台</h3>
+                <div>
+                    <p class="main-title">{{ hometitle.title.main }}</p>
+                    <p class="sub-title">{{ hometitle.title.sub }}</p>
+                </div>
             </div>
-            <el-form ref="login-form" :model="user" label-position="top" :rules="formLoginRules" hide-required-asterisk>
-                <el-form-item prop="account" label="账号">
-                    <input class="large" id="account" type="text" v-model="user.account" />
-                </el-form-item>
-                <el-form-item prop="password" label="密码">
-                    <input class="large" type="password" id="password" v-model="user.password" @keyup.enter="onEntrtLogin" />
-                </el-form-item>
-                <el-form-item style="margin-bottom: 0px">
-                    <el-button size="large" style="width: 100%" type="primary" :loading="loginButton.loading" class="no-loading-icon" @click="onLogin">
-                        {{ loginButton.text }}
-                    </el-button>
-                </el-form-item>
-            </el-form>
-            <!-- 登录错误的提示消息 -->
-            <div style="padding-top: 2px">
-                <el-text type="danger">{{ loginErrorMessage }}</el-text>
+            <div style="margin-top: 15px">
+                <el-form ref="login-form" :model="user" label-position="top" :rules="formLoginRules" hide-required-asterisk>
+                    <el-form-item prop="account" label="账号">
+                        <input class="large" id="account" type="text" v-model="user.account" />
+                    </el-form-item>
+                    <el-form-item prop="password" label="密码">
+                        <input class="large" type="password" id="password" v-model="user.password" @keyup.enter="onEntrtLogin" />
+                    </el-form-item>
+                    <el-form-item style="margin-bottom: 0px">
+                        <el-button size="large" style="width: 100%" type="primary" :loading="loginButton.loading" class="no-loading-icon" @click="onLogin">
+                            {{ loginButton.text }}
+                        </el-button>
+                    </el-form-item>
+                </el-form>
+                <!-- 登录错误的提示消息 -->
+                <div style="padding-top: 2px">
+                    <el-text type="danger">{{ loginErrorMessage }}</el-text>
+                </div>
             </div>
         </div>
 
@@ -62,10 +67,12 @@
 <script>
 import Footer from "../../../components/business/footer.vue";
 import { withDelay } from "../../../utils/common.js";
-import { setTitle } from "@/utils/authui.js";
+import { setTitle } from "../../../utils/authui.js";
 import { formatTime } from "../../../utils/date.js";
-import { login, logout, GetBasicInfo, GetCaptcha, Verification } from "@/api/index.js";
+import { login, logout, GetBasicInfo, GetCaptcha, Verification } from "../../../api/index.js";
+import { GetBasicFooter } from "../../../api/index.js";
 import { ECODE } from "@/utils/eode";
+import { KEY } from "../../../utils/envkey.js";
 export default {
     name: "LoginIndex",
     components: { Footer },
@@ -109,14 +116,17 @@ export default {
             },
             loginErrorMessage: "",
             countdownTimer: null, // 全局变量来存储定时器ID
+            hometitle: {
+                title: {
+                    main: "",
+                    sub: "",
+                },
+            },
         };
     },
     computed: {},
     watch: {},
-    created() {
-        setTitle("用户登录");
-        this.loadGetBasicInfo();
-    },
+
     mounted() {},
     methods: {
         onEntrtLogin(e) {
@@ -265,6 +275,12 @@ export default {
                 })
                 .catch(() => {});
         },
+        loadGetBasicFooter: function () {
+            GetBasicFooter().then((res) => {
+                this.hometitle = res.payload;
+                window.localStorage.setItem(KEY.AUTHUI_WEB_BASIC_INFO, JSON.stringify(res.payload));
+            });
+        },
         onContinueLogin() {
             // 继续登录
             this.loadVerification();
@@ -318,6 +334,13 @@ export default {
             }, 1000);
         },
     },
+    created() {
+        const str = window.localStorage.getItem(KEY.AUTHUI_WEB_BASIC_INFO);
+        this.hometitle = str ? JSON.parse(str) : { title: { main: "登录数据系统", sub: "" } };
+        setTitle("用户登录");
+        this.loadGetBasicInfo();
+        this.loadGetBasicFooter();
+    },
 };
 </script>
 
@@ -335,8 +358,37 @@ export default {
 
 .login-head {
     text-align: center;
-    h3 {
-        color: var(--text-color-primary);
+    color: var(--text-color-primary);
+    p {
+        margin-bottom: 0px;
+    }
+}
+
+/* 主标题 */
+.main-title {
+    font-size: 1.4em;
+    font-weight: bold;
+    margin: 0 0 8px 0;
+    color: #333;
+    margin-top: 12px;
+}
+
+/* 副标题 */
+.sub-title {
+    font-size: 1em;
+    font-weight: normal;
+    margin: 0;
+    color: #666;
+    margin-top: 5px;
+}
+
+/* 移动端字体大小 */
+@media (max-width: 768px) {
+    .main-title {
+        font-size: 1.2em;
+    }
+    .sub-title {
+        font-size: 0.9em;
     }
 }
 
@@ -344,6 +396,7 @@ export default {
     width: 24rem;
     background-color: rgba(255, 255, 255, 1);
 }
+
 /* 不显示loading图标 */
 .no-loading-icon .el-icon {
     display: none;

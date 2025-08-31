@@ -19,7 +19,7 @@
     </div>
 </template>
 <script>
-import { GetBasicFooter } from "../../api/index.js";
+import { KEY } from "../../utils/envkey.js";
 export default {
     name: "FooterIndex",
     data() {
@@ -49,20 +49,13 @@ export default {
             }
             return false;
         },
-        loadGetBasicFooter: function () {
-            GetBasicFooter().then((res) => {
-                this.footer = res.payload;
-                this.footer.forgetpwd = {
-                    href: "/authui/forgetpwd.html",
-                    title: "忘记密码",
-                };
-                window.localStorage.setItem("footer", JSON.stringify(this.footer));
-            });
-        },
     },
     created() {
-        this.footer = JSON.parse(window.localStorage.getItem("footer"));
-        this.loadGetBasicFooter();
+        this.footer = JSON.parse(window.localStorage.getItem(KEY.AUTHUI_WEB_BASIC_INFO));
+        this.footer.forgetpwd = {
+            href: "/authui/forgetpwd.html",
+            title: "忘记密码",
+        };
     },
 };
 </script>
