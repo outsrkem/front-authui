@@ -16,7 +16,7 @@
                         <el-input v-model="inputFrom.email" />
                     </el-form-item>
                     <el-form-item label="输入验证码" prop="captcha">
-                        <el-input v-model.number="inputFrom.captcha" @input="submitForm()">
+                        <el-input v-model="inputFrom.captcha" @input="submitForm()">
                             <template #append>
                                 <el-button :disabled="buttonDisabled.GetCaptcha" @click="onSendCaptcha()">{{ buttonTitle.GetCaptcha }}</el-button>
                             </template>
@@ -52,46 +52,17 @@ export default {
                 passwd1: "",
             },
             formRules: {
-                account: [
-                    {
-                        required: true,
-                        type: "string",
-                        message: "请输入账号名",
-                        trigger: ["blur", "change"],
-                    },
-                ],
+                account: [{ required: true, type: "string", message: "请输入账号名", trigger: ["blur", "change"] }],
                 email: [
                     { required: true, message: "请输入邮箱", trigger: "blur" },
-                    {
-                        type: "email",
-                        message: "邮箱格式不正确",
-                        trigger: ["blur", "change"],
-                    },
+                    { type: "email", message: "邮箱格式不正确", trigger: ["blur", "change"] },
                 ],
                 captcha: [
                     { required: true, message: "请输入验证码", trigger: "blur" },
-                    {
-                        type: "number",
-                        message: "6位数字验证码",
-                        trigger: ["blur", "change"],
-                    },
+                    { pattern: /^[0-9]{6}$/, message: "6位数字验证码", trigger: ["blur", "change"] },
                 ],
-                passwd0: [
-                    {
-                        required: true,
-                        type: "string",
-                        message: "输入一个新密码",
-                        trigger: ["blur", "change"],
-                    },
-                ],
-                passwd1: [
-                    {
-                        required: true,
-                        type: "string",
-                        message: "请再次输入新密码",
-                        trigger: ["blur", "change"],
-                    },
-                ],
+                passwd0: [{ required: true, type: "string", message: "输入一个新密码", trigger: ["blur", "change"] }],
+                passwd1: [{ required: true, type: "string", message: "请再次输入新密码", trigger: ["blur", "change"] }],
             },
             buttonTitle: {
                 GetCaptcha: "点击获取验证码",
