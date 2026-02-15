@@ -12,7 +12,7 @@ module.exports = defineConfig({
     devServer: {
         proxy: {
             "/": {
-                target: "https://turtle.outsrkem.top:35860",
+                target: "https://uias-devops.local.com",
                 changeOrigin: true,
                 secure: false,
                 pathRewrite: {

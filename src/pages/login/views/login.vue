@@ -403,8 +403,7 @@ export default {
 }
 
 .two-factor-head {
-    display: flex;
-    justify-content: center;
+    padding: 24px;
     h3 {
         color: #3d3f41;
     }
