@@ -73,21 +73,20 @@ import { login, logout, GetBasicInfo, GetCaptcha, Verification } from "../../../
 import { GetBasicFooter } from "../../../api/index.js";
 import { ECODE } from "@/utils/eode";
 import { KEY } from "../../../utils/envkey.js";
+
 export default {
     name: "LoginIndex",
     components: { Footer },
-    props: {},
     data() {
         return {
             user: {
-                // 登录名,密码
                 account: "",
                 password: "",
             },
             // 表单验证规则配置
             formLoginRules: {
-                account: [{ required: true, type: "string", message: "请输入登录账号", trigger: ["blur", "change"] }],
-                password: [{ required: true, type: "string", message: "请输入密码", trigger: ["blur", "change"] }],
+                account: [{ required: true, message: "请输入登录账号", trigger: ["blur", "change"] }],
+                password: [{ required: true, message: "请输入密码", trigger: ["blur", "change"] }],
             },
             loginPage: true,
             isTwoFactorPage: false, // 二次验证
@@ -111,11 +110,11 @@ export default {
             },
             // 登录按钮
             loginButton: {
-                text: "登录", // 按钮名称
-                loading: false, // loading状态
+                text: "登录",
+                loading: false,
             },
             loginErrorMessage: "",
-            countdownTimer: null, // 全局变量来存储定时器ID
+            countdownTimer: null,
             hometitle: {
                 title: {
                     main: "",
@@ -124,115 +123,82 @@ export default {
             },
         };
     },
-    computed: {},
-    watch: {},
-
-    mounted() {},
     methods: {
         onEntrtLogin(e) {
-            if (e != null && e.which != 13) {
-                return false;
-            }
-            if (this.loginButton.loading != false) {
-                return false;
-            }
+            // 回车登录
+            if (e?.which !== 13 || this.loginButton.loading) return false;
             this.onLogin();
         },
         onLogin() {
-            // 表单验证， validate 方法是异步的,获取表单数据（根据接口要求绑定数据）
+            // 表单验证
             this.$refs["login-form"].validate((valid) => {
-                if (!valid) {
-                    return;
-                }
+                if (!valid) return;
                 this.$cookies.remove("session");
-                this.Login(); // 验证通过，请求登录
+                this.Login();
             });
         },
-        toRedirectPath: function () {
-            // 登录后跳转到之前的页面，以下这种写法哈希模式路由不支持。
+        toRedirectPath() {
+            // 登录后跳转到之前的页面
             const urlParams = new URLSearchParams(window.location.search);
             const redirectPath = urlParams.get("returnto");
-            if (redirectPath) {
-                window.location.assign(decodeURIComponent(redirectPath));
-                this.loginButton.loading = false;
-            } else {
-                window.location.assign("/");
-                this.loginButton.loading = false;
-            }
+            window.location.assign(decodeURIComponent(redirectPath || "/"));
+            this.loginButton.loading = false;
         },
-        Login: function () {
-            // 表单验证通过，提交登录
+        Login() {
+            // 登录请求
             this.loginErrorMessage = "";
-            this.loginButton.text = "请稍后";
-            this.loginButton.loading = true;
+            this.loginButton = { text: "请稍后", loading: true };
+
             const data = {
                 uias: {
                     account: this.user.account.trim(), // 去掉输入框前后的空格
                     password: this.user.password.trim(),
                 },
             };
+
             withDelay(() => login(data))
                 .then((res) => {
                     if (res.payload.two_factor) {
-                        // 要二次验证
+                        // 二次验证
                         this.onSwitchFrom();
                         const device = res.payload.device;
-                        device.map((item) => {
-                            if (item.name === "email") {
-                                item["title"] = `邮箱验证（${item.value}）`;
-                            }
-                            if (item.name === "mobile") {
-                                item["title"] = `手机验证（${item.value}）`;
-                            }
-                            if (item.name === "vmfa") {
-                                item["title"] = `VMFA验证`;
-                            }
-                            if (this.twoFactorForm.device === null) {
-                                this.twoFactorForm.device = item.name;
-                            }
+                        device.forEach((item) => {
+                            if (item.name === "email") item.title = `邮箱验证（${item.value}）`;
+                            if (item.name === "mobile") item.title = `手机验证（${item.value}）`;
+                            if (item.name === "vmfa") item.title = `VMFA验证`;
                         });
                         this.twoFactor.device = device;
+                        this.twoFactorForm.device = device[0]?.name || null;
                     } else {
                         this.toRedirectPath(); // 不进行二次验证
                     }
                 })
                 .catch((err) => {
-                    let ecode = err.metadata.ecode;
-                    let err_count = err.payload.err_count;
-                    let max_count = err.payload.max_count;
-                    let lock_duration = err.payload.lock_duration;
-                    let last_time = err.payload.last_time;
+                    const { ecode } = err.metadata;
+                    const { err_count, max_count, lock_duration, last_time } = err.payload;
+
                     if (ecode === ECODE.EcodeUserAuthenticationFailed) {
                         if (err_count < 2) {
-                            this.loginErrorMessage = `账号或密码错误。`;
-                            return;
-                        }
-                        if (max_count > err_count && err_count >= 2) {
+                            this.loginErrorMessage = "账号或密码错误。";
+                        } else if (max_count > err_count) {
                             this.loginErrorMessage = `账号或密码错误，再输错${max_count - err_count}次该账号将被锁定${lock_duration / 60}分钟。`;
-                            return;
-                        }
-                        if (max_count <= err_count) {
+                        } else if (max_count <= err_count) {
                             this.loginErrorMessage = `账号或密码错误，账号已锁定，请${lock_duration / 60}分钟后重试。`;
-                            return;
                         }
-                    }
-                    if (ecode === ECODE.EcodeLoginAttemptsExceeded) {
-                        let unlockTime = formatTime(last_time + lock_duration * 1000, "YYYY年MM月DD日HH时mm分ss秒");
-                        let msg = `账号已锁定，请于${unlockTime}后重试。`;
+                    } else if (ecode === ECODE.EcodeLoginAttemptsExceeded) {
+                        const unlockTime = formatTime(last_time + lock_duration * 1000, "YYYY年MM月DD日HH时mm分ss秒");
                         setTimeout(() => {
-                            this.loginErrorMessage = msg;
+                            this.loginErrorMessage = `账号已锁定，请于${unlockTime}后重试。`;
                         }, 100);
-                        return;
+                    } else {
+                        this.loginErrorMessage = err.metadata.message;
                     }
-                    this.loginErrorMessage = err.metadata.message;
                 })
                 .finally(() => {
-                    // 重置按钮状态
-                    this.loginButton.loading = false;
-                    this.loginButton.text = "登录";
+                    this.loginButton = { text: "登录", loading: false };
                 });
         },
-        loadGetCaptcha: function () {
+        loadGetCaptcha() {
             // 获取验证码
             const params = { variety: this.twoFactorForm.device };
             GetCaptcha(params)
@@ -243,39 +209,31 @@ export default {
                     };
                 })
                 .catch(() => {
-                    this.messages = {
-                        type: "danger",
-                        text: "验证码发送失败，请稍后重试。",
-                    };
+                    this.messages = { type: "danger", text: "验证码发送失败，请稍后重试。" };
                 });
         },
-        loadVerification: function () {
+        loadVerification() {
             // 验证后继续登录
             const paths = { schema: this.twoFactorForm.device };
             const data = { captcha: this.twoFactorForm.captcha };
             Verification(paths, data)
                 .then(() => {
-                    this.messages = {
-                        type: "success",
-                        text: "验证成功，正在登录。",
-                    };
+                    this.messages = { type: "success", text: "验证成功，正在登录。" };
                     this.toRedirectPath();
                 })
                 .catch(() => {
                     this.twoFactorForm.captcha = "";
-                    this.messages.type = "danger";
-                    this.messages.text = "验证码已失效，请点击重新获取。";
+                    this.messages = { type: "danger", text: "验证码已失效，请点击重新获取。" };
                 });
         },
-        loadGetBasicInfo: function () {
+        loadGetBasicInfo() {
+            // 已登录直接跳转
             GetBasicInfo()
-                .then(() => {
-                    // 如果用户已经登录过直接跳转到控制台。
-                    this.toRedirectPath();
-                })
+                .then(() => this.toRedirectPath())
                 .catch(() => {});
         },
-        loadGetBasicFooter: function () {
+        loadGetBasicFooter() {
+            // 获取页脚标题
             GetBasicFooter().then((res) => {
                 this.hometitle = res.payload;
                 window.localStorage.setItem(KEY.AUTHUI_WEB_BASIC_INFO, JSON.stringify(res.payload));
@@ -291,41 +249,29 @@ export default {
             this.loadGetCaptcha();
         },
         onSwitchAccount() {
-            logout()
-                .then(() => {
-                    this.$cookies.remove("session");
-                })
-                .catch(() => {
-                    this.$cookies.remove("session");
-                });
-            this.loginPage = true;
-            this.isTwoFactorPage = false;
-            this.loginButton.loading = false;
-        },
-        onSwitchFrom() {
-            if (this.loginPage) {
-                this.loginPage = false;
-                this.isTwoFactorPage = true;
-            } else {
+            // 切换账号
+            logout().finally(() => {
+                this.$cookies.remove("session");
                 this.loginPage = true;
                 this.isTwoFactorPage = false;
-            }
+                this.loginButton.loading = false;
+            });
+        },
+        onSwitchFrom() {
+            // 切换登录/二次验证页面
+            this.loginPage = !this.loginPage;
+            this.isTwoFactorPage = !this.isTwoFactorPage;
         },
         handleInputChange() {
-            // 验证码输入框在 Input 值改变时触发
-            // 输入验证码，启用继续登录按钮，删除验证码，禁用继续登录按钮
-            let value = this.twoFactorForm.captcha;
-            if (value != "") {
-                this.buttonDisabled.ContinueLogin = false;
-            } else {
-                this.buttonDisabled.ContinueLogin = true;
-            }
+            // 输入验证码控制按钮状态
+            this.buttonDisabled.ContinueLogin = !this.twoFactorForm.captcha;
         },
         startCountdown(seconds = 60) {
+            // 验证码倒计时
             if (seconds <= 0) {
-                clearInterval(this.countdownTimer); // 清除定时器
-                this.buttonDisabled.GetCaptcha = false; // 启用按钮
-                this.buttonTitle.GetCaptcha = "重新获取验证码"; // 恢复按钮文本
+                clearTimeout(this.countdownTimer);
+                this.buttonDisabled.GetCaptcha = false;
+                this.buttonTitle.GetCaptcha = "重新获取验证码";
                 return;
             }
             this.buttonTitle.GetCaptcha = `${seconds}秒后重新获取`;
@@ -354,32 +300,32 @@ export default {
 
 .from-common {
     padding: 20px;
+    margin-bottom: 100px;
 }
 
 .login-head {
     text-align: center;
     color: var(--text-color-primary);
-    p {
-        margin-bottom: 0px;
-    }
+}
+
+.login-head p {
+    margin-bottom: 0;
 }
 
 /* 主标题 */
 .main-title {
     font-size: 1.4em;
     font-weight: bold;
-    margin: 0 0 8px 0;
+    margin: 12px 0 8px;
     color: #333;
-    margin-top: 12px;
 }
 
 /* 副标题 */
 .sub-title {
     font-size: 1em;
     font-weight: normal;
-    margin: 0;
+    margin: 5px 0 0;
     color: #666;
-    margin-top: 5px;
 }
 
 /* 移动端字体大小 */
@@ -404,15 +350,17 @@ export default {
 
 .two-factor-head {
     padding: 24px;
-    h3 {
-        color: #3d3f41;
-    }
+}
+
+.two-factor-head h3 {
+    color: #3d3f41;
 }
 
 .two-factor-container {
     width: 400px;
-    h3 {
-        text-align: center;
-    }
+}
+
+.two-factor-container h3 {
+    text-align: center;
 }
 </style>
