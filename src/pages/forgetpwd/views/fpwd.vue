@@ -1,37 +1,46 @@
 <template>
-    <div class="container" style="">
-        <div class="content" style="">
-            <h4>忘记密码</h4>
-            <div class="hint-message">
-                <el-text>
-                    <span style="margin-left: 5px">{{ messages.text }}</span>
-                </el-text>
-            </div>
-            <div>
-                <el-form :model="inputFrom" label-width="auto" label-position="top" :rules="formRules">
-                    <el-form-item label="输入账号名" prop="account">
-                        <el-input v-model="inputFrom.account" />
-                    </el-form-item>
-                    <el-form-item label="输入账号绑定的邮箱" prop="email">
-                        <el-input v-model="inputFrom.email" />
-                    </el-form-item>
-                    <el-form-item label="输入验证码" prop="captcha">
-                        <el-input v-model="inputFrom.captcha" @input="submitForm()">
-                            <template #append>
-                                <el-button :disabled="buttonDisabled.GetCaptcha" @click="onSendCaptcha()">{{ buttonTitle.GetCaptcha }}</el-button>
-                            </template>
-                        </el-input>
-                    </el-form-item>
-                    <el-form-item label="输入一个新密码" prop="passwd0">
-                        <el-input v-model="inputFrom.passwd0" clearable show-password />
-                    </el-form-item>
-                    <el-form-item label="请再次输入新密码" prop="passwd1">
-                        <el-input v-model="inputFrom.passwd1" clearable show-password />
-                    </el-form-item>
-                    <div style="float: right; padding-right: 20px">
-                        <el-button type="primary" @click="onSetPasswd()">确定</el-button>
-                    </div>
-                </el-form>
+    <div style="display: flex; justify-content: center">
+        <div class="container">
+            <div class="content">
+                <h4>重置密码</h4>
+                <div class="hint-message">
+                    <el-text :type="messages.type">{{ messages.text }}</el-text>
+                </div>
+                <div>
+                    <el-form :model="inputFrom" label-width="auto" label-position="top" ref="formRef" :rules="formRules">
+                        <el-form-item label="输入账号名" prop="account">
+                            <el-input ref="accountInput" v-model="inputFrom.account" />
+                        </el-form-item>
+                        <el-form-item label="输入账号绑定的邮箱" prop="email">
+                            <el-input ref="emailInput" v-model="inputFrom.email" />
+                        </el-form-item>
+                        <el-form-item label="输入验证码" prop="captcha">
+                            <div style="width: 100%; display: flex; gap: 12px; align-items: center">
+                                <div style="flex: 1">
+                                    <el-input v-model="inputFrom.captcha" :placeholder="serial" />
+                                </div>
+                                <div style="min-width: 150px">
+                                    <el-button style="width: 100%" :disabled="buttonDisabled.GetCaptcha" @click="onSendCaptcha()">
+                                        {{ buttonTitle.GetCaptcha }}
+                                    </el-button>
+                                </div>
+                            </div>
+                        </el-form-item>
+                        <!-- Disable automatic password filling -->
+                        <input id="fakeUserName" type="text" class="fake-input" />
+                        <input id="fakePassword" type="password" class="fake-input" />
+                        <el-form-item label="输入一个新密码" prop="passwd0">
+                            <el-input v-model="inputFrom.passwd0" clearable show-password auto-complete="new-password" />
+                        </el-form-item>
+                        <el-form-item label="请再次输入新密码" prop="passwd1">
+                            <el-input v-model="inputFrom.passwd1" clearable show-password auto-complete="new-password" />
+                        </el-form-item>
+                        <div class="submit-box">
+                            <el-button class="submit-btn" type="success" @click="onToLogin()">去登录</el-button>
+                            <el-button class="submit-btn" type="primary" @click="onSetPasswd()">确定重置</el-button>
+                        </div>
+                    </el-form>
+                </div>
             </div>
         </div>
     </div>
@@ -51,11 +60,12 @@ export default {
                 passwd0: "",
                 passwd1: "",
             },
+            serial: "",
             formRules: {
                 account: [{ required: true, type: "string", message: "请输入账号名", trigger: ["blur", "change"] }],
                 email: [
                     { required: true, message: "请输入邮箱", trigger: "blur" },
-                    { type: "email", message: "邮箱格式不正确", trigger: ["blur", "change"] },
+                    { type: "email", message: "邮箱格式错误", trigger: ["blur", "change"] },
                 ],
                 captcha: [
                     { required: true, message: "请输入验证码", trigger: "blur" },
@@ -87,8 +97,9 @@ export default {
                 .then((res) => {
                     this.messages = {
                         type: "success",
-                        text: `验证码发送成功。验证码编号：${res.payload.captcha.serial}`,
+                        text: "验证码发送成功。",
                     };
+                    this.serial = `验证码编号：${res.payload.captcha.serial}`;
                 })
                 .catch((err) => {
                     console.log(err);
@@ -123,7 +134,10 @@ export default {
                     };
                 });
         },
-        onSetPasswd() {
+        async onSetPasswd() {
+            const valid = await this.$refs["formRef"].validate();
+            if (!valid) return;
+
             const data = {
                 account: this.inputFrom.account,
                 email: this.inputFrom.email,
@@ -139,16 +153,19 @@ export default {
             }
             this.loadSetPwd(data);
         },
+        onToLogin() {
+            window.location.href = "/authui/login.html";
+        },
         onSendCaptcha() {
             this.buttonDisabled.GetCaptcha = true;
-            this.startCountdown(60); // 倒计时功能，用于更新获取验证码按钮的提示信息
+            this.startCountdown(60);
             this.loadGetCaptcha();
         },
         startCountdown(seconds = 60) {
             if (seconds <= 0) {
-                clearInterval(this.countdownTimer); // 清除定时器
-                this.buttonDisabled.GetCaptcha = false; // 启用按钮
-                this.buttonTitle.GetCaptcha = "重新获取验证码"; // 恢复按钮文本
+                clearInterval(this.countdownTimer); // Clear timer task
+                this.buttonDisabled.GetCaptcha = false; // Enable button
+                this.buttonTitle.GetCaptcha = "重新获取验证码"; // Reset button text
                 return;
             }
             this.buttonTitle.GetCaptcha = `${seconds}秒后重新获取`;
@@ -165,32 +182,42 @@ export default {
 
 <style scoped lang="less">
 .container {
-    display: flex;
-    justify-content: center;
+    width: 360px;
 }
+
 .content {
-    // text-align: center;
-    box-shadow: 0 0px 2px rgba(0, 0, 0, 0.1);
-    margin-left: 0px;
-    max-width: 380px;
     border-radius: 3px;
-    padding: 12px;
+    padding: 5px;
 }
 
 @media (max-width: 600px) {
-    .content {
-        padding: 0px;
-        max-width: 100%;
+    .container {
+        width: 100%;
+        padding: 0;
     }
 }
 
 .hint-message {
-    background-color: #deecff;
-    padding-top: 7px;
-    padding-bottom: 7px;
-    border-radius: 8px;
-    padding-left: 16px;
-    padding-right: 16px;
+    background-color: #eef6ff;
+    padding: 7px 16px;
+    border-radius: 3px;
     margin-bottom: 10px;
+}
+.submit-box {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+}
+.submit-btn {
+    flex: 1;
+}
+.fake-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    padding: 0;
+    border: none;
 }
 </style>
