@@ -1,22 +1,22 @@
 import request from "@/utils/request.js";
 
 /**
- * 请求函数模块 ajax 封装
- * 向外部暴露一个函数 ajax
- * 共有如下4个参数
- * @param {*} url 请求路径，默认为空
- * @param {*} method 请求方法，默认为GET
- * @param {*} params 请求参数，默认为空
- * @param {*} data 请求参数，默认为空
+ * AJAX request function module encapsulation
+ * Expose an ajax function externally
+ * Contains the following 4 parameters
+ * @param {*} url Request path, default is empty
+ * @param {*} method Request method, default is GET
+ * @param {*} params Request parameters, default is empty
+ * @param {*} data Request body data, default is empty
  */
 export default function ajax(url = "", method = "GET", params, data) {
-    /** 返回值 Promise 对象，异步返回的数据是response.data，而不是response */
+    /** Return a Promise object. The asynchronous returned data is response.data instead of the full response */
     return new Promise(function (resolve, reject) {
         /**
-         * 利用axios异步执行ajax请求
-         * 发送请求 这个promise用来保存axios的返回值(promise对象)
-         * resolve() : 成功回调
-         * reject() : 失败回调
+         * Send AJAX requests via axios
+         * This promise stores the return value (Promise object) of axios
+         * resolve(): Success callback
+         * reject(): Failure callback
          */
         const promise = request({
             method,
@@ -26,11 +26,11 @@ export default function ajax(url = "", method = "GET", params, data) {
         });
         promise
             .then((response) => {
-                /** 成功回调resolve() */
+                /** Success callback: invoke resolve() */
                 resolve(response.data);
             })
             .catch((error) => {
-                /** 失败回调reject() */
+                /** Failure callback: invoke reject() */
                 reject(error);
             });
     });
